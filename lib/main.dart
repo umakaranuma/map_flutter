@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:googlemp/map_Screen.dart';
+import 'package:googlemp/screen/presenters/map_Screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: MapScreen(),
+      home: const MapScreen(),
     );
   }
 }
