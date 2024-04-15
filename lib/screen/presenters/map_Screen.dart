@@ -5,6 +5,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:googlemp/screen/presenters/controller/map_controller.dart';
+import 'dart:math' as math;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -41,6 +42,7 @@ class _MapScreenState extends State<MapScreen> {
     _mapController.dispose();
     super.dispose();
   }
+  
 
   Future<void> _requestLocationPermission() async {
     MapPageController.requestLocationPermission(_getCurrentLocation);
@@ -96,6 +98,32 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
   }
+
+
+  //Function To Calculate distance between two points
+  double _distanceBetweenLatLng(LatLng point1, LatLng point2) {
+    const double earthRadius = 6371000; // meters
+
+    double lat1Radians = math.pi * point1.latitude / 180;
+    double lat2Radians = math.pi * point2.latitude / 180;
+    double deltaLatRadians =
+        math.pi * (point2.latitude - point1.latitude) / 180;
+    double deltaLngRadians =
+        math.pi * (point2.longitude - point1.longitude) / 180;
+
+    double a = math.sin(deltaLatRadians / 2) * math.sin(deltaLatRadians / 2) +
+        math.cos(lat1Radians) *
+            math.cos(lat2Radians) *
+            math.sin(deltaLngRadians / 2) *
+            math.sin(deltaLngRadians / 2);
+    double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -206,4 +234,9 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
+
+
+  
 }
+
+
