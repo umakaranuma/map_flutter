@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
 import 'package:googlemp/screen/presenters/controller/map_controller.dart';
 import 'dart:math' as math;
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  String userkey;
+  MapScreen({required this.userkey, super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -29,7 +32,7 @@ class _MapScreenState extends State<MapScreen> {
   TextEditingController searchController = TextEditingController();
   Set<Marker> markers = {};
   late double distance = 0.0;
-  String userkey = "AIzaSyCAW13DZO4MqCDEdyjeTGWp7_kebTFE5E0";
+  late double straightdistance = 0.0;
 
   @override
   void initState() {
@@ -42,7 +45,6 @@ class _MapScreenState extends State<MapScreen> {
     _mapController.dispose();
     super.dispose();
   }
-  
 
   Future<void> _requestLocationPermission() async {
     MapPageController.requestLocationPermission(_getCurrentLocation);
@@ -60,8 +62,25 @@ class _MapScreenState extends State<MapScreen> {
     try {
       List<Location> locations =
           await MapPageController.searchLocation(locationName);
+      setState(() {
+        markers.clear(); // Clear existing markers
+      });
 
       if (locations.isNotEmpty) {
+        for (Location location in locations) {
+          LatLng searchedLocation =
+              LatLng(location.latitude, location.longitude);
+          MapPageController.addMarker(markers, searchedLocation);
+
+          // Calculate straight-line distance
+          if (_currentPosition != null) {
+            double straightLineDistance =
+                _distanceBetweenLatLng(_currentPosition!, searchedLocation);
+            print(
+                'Straight-line distance to $locationName: ${straightLineDistance.toStringAsFixed(2)} meters');
+            straightdistance = straightLineDistance;
+          }
+        }
         Location firstLocation = locations.first;
         LatLng searchedLocation =
             LatLng(firstLocation.latitude, firstLocation.longitude);
@@ -77,11 +96,50 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Container placesAutoCompleteTextField() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: GooglePlaceAutoCompleteTextField(
+        textEditingController: searchController,
+        googleAPIKey: widget.userkey,
+        inputDecoration: const InputDecoration(
+          hintText: 'Search location',
+          border: InputBorder.none,
+        ),
+        debounceTime: 400,
+        // Modify countries array as needed
+        // countries: [''], // Example: India and United States
+        isLatLngRequired: true,
+        getPlaceDetailWithLatLng: (Prediction prediction) {
+          // Handle place details here if needed
+          print('Place Details: ${prediction.lat}, ${prediction.lng}');
+        },
+        itemClick: (Prediction prediction) {
+          // Handle item click here
+          _searchLocation(prediction.description ?? '');
+        },
+        seperatedBuilder: const Divider(),
+      ),
+    );
+  }
+
   Future<void> _getRoute() async {
     if (_currentPosition != null) {
       try {
         PolylineResult result = await MapPageController.getRoute(
-            _currentPosition!, centerPosition, userkey);
+            _currentPosition!, centerPosition, widget.userkey);
 
         if (result.points.isNotEmpty) {
           setState(() {
@@ -98,7 +156,6 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
   }
-
 
   //Function To Calculate distance between two points
   double _distanceBetweenLatLng(LatLng point1, LatLng point2) {
@@ -120,10 +177,6 @@ class _MapScreenState extends State<MapScreen> {
 
     return earthRadius * c;
   }
-
-
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -169,12 +222,23 @@ class _MapScreenState extends State<MapScreen> {
                   Positioned(
                     top: 10,
                     left: 10,
-                    child: Text(
-                      'Distance: ${distance.toStringAsFixed(2)} km',
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Straight Distance: ${straightdistance.toStringAsFixed(2)} m',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Distance: ${distance.toStringAsFixed(2)} km',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 Positioned(
@@ -199,44 +263,38 @@ class _MapScreenState extends State<MapScreen> {
 
   Container searchbar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search location',
-                border: InputBorder.none,
-              ),
-              onSubmitted: _searchLocation,
+      child: GooglePlaceAutoCompleteTextField(
+        boxDecoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 2),
             ),
-          ),
-          IconButton(
-            onPressed: () {
-              _searchLocation(searchController.text);
-            },
-            icon: const Icon(Icons.search),
-          ),
-        ],
+          ],
+        ),
+        textEditingController: searchController,
+        googleAPIKey: widget.userkey,
+        inputDecoration: const InputDecoration(
+          hintText: 'Search location',
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 20),
+        ),
+        debounceTime: 400,
+        isLatLngRequired: true,
+        getPlaceDetailWithLatLng: (Prediction prediction) {
+          // Handle place details here if needed
+          print('Place Details: ${prediction.lat}, ${prediction.lng}');
+        },
+        itemClick: (Prediction prediction) {
+          // Handle item click here
+          _searchLocation(prediction.description ?? '');
+        },
+        seperatedBuilder: const Divider(),
       ),
     );
   }
-
-
-  
 }
-
-
