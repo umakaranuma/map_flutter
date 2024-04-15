@@ -1,13 +1,17 @@
-// search_service.dart
-
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:googlemp/screen/presenters/controller/map_controller.dart';
 import 'dart:math' as math;
 
 class SearchService {
-  static Future<void> searchLocation(String locationName, Set<Marker> markers,
-      LatLng? currentPosition, GoogleMapController mapController) async {
+  static Future<void> searchLocation(
+    String locationName,
+    Set<Marker> markers,
+    LatLng? currentPosition,
+    GoogleMapController mapController,
+    Function(double) updateStraightDistance,
+    Function(LatLng) updateCenterPosition,
+  ) async {
     try {
       List<Location> locations =
           await MapPageController.searchLocation(locationName);
@@ -25,11 +29,13 @@ class SearchService {
                 _distanceBetweenLatLng(currentPosition, searchedLocation);
             print(
                 'Straight-line distance to $locationName: ${straightLineDistance.toStringAsFixed(2)} meters');
+            updateStraightDistance(straightLineDistance);
           }
         }
         Location firstLocation = locations.first;
         LatLng searchedLocation =
             LatLng(firstLocation.latitude, firstLocation.longitude);
+        updateCenterPosition(searchedLocation);
         mapController
             .animateCamera(CameraUpdate.newLatLngZoom(searchedLocation, 15));
         MapPageController.addMarker(markers, searchedLocation);

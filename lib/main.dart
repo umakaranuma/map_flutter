@@ -18,6 +18,8 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: MapScreen(
+        showRoute: true,
+        searchfunction: true,
         userkey: 'AIzaSyCAW13DZO4MqCDEdyjeTGWp7_kebTFE5E0',
       ),
     );
